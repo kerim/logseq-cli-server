@@ -22,27 +22,23 @@ This HTTP server solves these problems by:
 
 | Feature | Logseq CLI (this server) | Logseq Built-in HTTP API |
 |---------|-------------------------|--------------------------|
-| **Requires Logseq app running** | ❌ No (mostly) | ✅ Yes (always) |
+| **Requires Logseq app running** | ❌ No | ✅ Yes (always) |
 | **List graphs** | ✅ Yes | ❌ No |
 | **Query graphs** | ✅ Yes (offline) | ✅ Yes |
 | **Search graphs** | ✅ Yes (offline: title only) | ✅ Yes (full content) |
 | **Export graphs** | ✅ Yes (Markdown/EDN) | ⚠️ Limited |
-| **Modify data** | ⚠️ Via append only (needs API) | ✅ Full CRUD |
-| **Start MCP server** | ✅ Yes | ❌ No |
-| **Real-time updates** | ❌ No | ✅ Yes |
+| **Modify data** | ❌ Read-only | ✅ Full CRUD |
 
 **Use this server when:**
 - You need to discover available graphs without opening Logseq
 - You want offline access to graph data for queries
 - You need to export graphs as Markdown or EDN
-- You want to start an MCP server for a graph
 - You're building a tool that works independently of the Logseq app
 
 **Use Logseq's built-in API when:**
 - The Logseq app is already running
-- You need to modify graph data extensively (create/update/delete)
+- You need to modify graph data (create/update/delete)
 - You need full-text search across block content
-- You need real-time updates
 
 ## Prerequisites
 
@@ -473,7 +469,6 @@ tail -f logseq-http-server.log
 - ❌ Cannot list graphs
 - ✅ Full read/write access
 - ✅ Full-text search
-- ✅ Real-time updates
 
 ### vs. Chrome Native Messaging
 
