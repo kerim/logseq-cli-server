@@ -22,22 +22,26 @@ This HTTP server solves these problems by:
 
 | Feature | Logseq CLI (this server) | Logseq Built-in HTTP API |
 |---------|-------------------------|--------------------------|
-| **Requires Logseq app running** | ❌ No | ✅ Yes |
-| **Can list graphs** | ✅ Yes | ❌ No |
-| **Can query graphs** | ✅ Yes (offline) | ✅ Yes (better) |
-| **Can search** | ⚠️ Limited (title only) | ✅ Yes (full content) |
-| **Can modify data** | ❌ No | ✅ Yes |
+| **Requires Logseq app running** | ❌ No (mostly) | ✅ Yes (always) |
+| **List graphs** | ✅ Yes | ❌ No |
+| **Query graphs** | ✅ Yes (offline) | ✅ Yes |
+| **Search graphs** | ✅ Yes (offline: title only) | ✅ Yes (full content) |
+| **Export graphs** | ✅ Yes (Markdown/EDN) | ⚠️ Limited |
+| **Modify data** | ⚠️ Via append only (needs API) | ✅ Full CRUD |
+| **Start MCP server** | ✅ Yes | ❌ No |
 | **Real-time updates** | ❌ No | ✅ Yes |
 
 **Use this server when:**
 - You need to discover available graphs without opening Logseq
-- You want offline access to graph data
+- You want offline access to graph data for queries
+- You need to export graphs as Markdown or EDN
+- You want to start an MCP server for a graph
 - You're building a tool that works independently of the Logseq app
 
 **Use Logseq's built-in API when:**
 - The Logseq app is already running
-- You need to modify graph data (create/update/delete)
-- You need full-text search
+- You need to modify graph data extensively (create/update/delete)
+- You need full-text search across block content
 - You need real-time updates
 
 ## Prerequisites
@@ -179,6 +183,78 @@ curl -X POST http://localhost:8765/query \
   -d '{"graph":"research-notes","query":"[:find (pull ?b [*]) :where [?b :block/content]]"}'
 ```
 
+#### Export Graph (Markdown)
+```bash
+GET /export?graph=GRAPH_NAME
+```
+
+Exports a graph as a Markdown zip file.
+
+Example:
+```bash
+curl "http://localhost:8765/export?graph=research-notes"
+```
+
+Response:
+```json
+{
+  "success": true,
+  "stdout": "Exported 328 pages to research-notes_markdown_1762687890.zip\n",
+  "returncode": 0
+}
+```
+
+The zip file will be created in the current directory where the server is running.
+
+#### Export Graph (EDN)
+```bash
+GET /export-edn?graph=GRAPH_NAME[&file=OUTPUT_FILE]
+```
+
+Exports a graph as EDN (Extensible Data Notation) format.
+
+Example:
+```bash
+curl "http://localhost:8765/export-edn?graph=research-notes&file=backup.edn"
+```
+
+Response:
+```json
+{
+  "success": true,
+  "stdout": "Exported 80 properties, 80 classes and 1060 pages to backup.edn\n",
+  "returncode": 0
+}
+```
+
+#### Append Text (Requires Logseq App Running)
+```bash
+POST /append
+Content-Type: application/json
+
+{
+  "text": "TEXT_TO_APPEND",
+  "api_token": "YOUR_API_TOKEN"
+}
+```
+
+Appends text to the currently open page in Logseq Desktop.
+
+**Requirements:**
+- Logseq Desktop app running
+- HTTP Server enabled in Logseq settings
+- Valid API token
+- A page must be currently open in the app
+
+Example:
+```bash
+curl -X POST http://localhost:8765/append \
+  -H "Content-Type: application/json" \
+  -d '{"text":"Meeting notes from today","api_token":"your-token-here"}'
+```
+
+**Note:** This endpoint may timeout or hang in some cases. For reliable write operations, use Logseq's built-in HTTP API directly.
+
 ## Usage from Browser Extensions
 
 ### manifest.json
@@ -238,11 +314,26 @@ const queryData = await queryResponse.json();
 - HTTP Server enabled in Logseq settings
 - API token configured
 
-### 4. Read-Only Access
+### 4. Read-Only Access (Mostly)
 
-The Logseq CLI (and this server) provides **read-only** access. You cannot create, update, or delete blocks/pages through the CLI.
+The Logseq CLI (and this server) provides **mostly read-only** access:
+- ✅ **Read**: List, show, search, query, export all work offline
+- ⚠️ **Write**: Only `append` is supported, and it requires the Logseq app running with API enabled
+- ❌ **CRUD**: Cannot create pages/blocks, update properties, or delete data
 
-For write operations, use [Logseq's built-in HTTP API](https://docs.logseq.com/#/page/logseq%20api).
+For full write operations, use [Logseq's built-in HTTP API](https://docs.logseq.com/#/page/logseq%20api).
+
+### 5. MCP Server
+
+The Logseq CLI can start an MCP (Model Context Protocol) server for a graph:
+
+```bash
+logseq mcp-server -g <graph-name>
+```
+
+This starts a separate long-running server process on port 12315 that provides MCP protocol access to the graph. This is **not wrapped by this HTTP server** - you would start the MCP server separately using the CLI directly.
+
+For more information, see the [Logseq CLI documentation](https://github.com/logseq/logseq/tree/master/deps/cli).
 
 ## Security Considerations
 
@@ -271,7 +362,9 @@ The server only executes safe Logseq CLI commands:
 - `show`
 - `search`
 - `query`
+- `export`
 - `export-edn`
+- `append` (requires API token)
 
 No arbitrary shell execution is possible.
 

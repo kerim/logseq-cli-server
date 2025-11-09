@@ -183,6 +183,31 @@ class LogseqHTTPHandler(http.server.BaseHTTPRequestHandler):
             response = self._execute_logseq_command('search', args)
             self._send_json(response)
 
+        elif path == '/export':
+            graph = params.get('graph', [None])[0]
+            if not graph:
+                self._send_error_json('Missing required parameter: graph')
+                return
+
+            # Export graph as Markdown zip
+            response = self._execute_logseq_command('export', [graph])
+            self._send_json(response)
+
+        elif path == '/export-edn':
+            graph = params.get('graph', [None])[0]
+            if not graph:
+                self._send_error_json('Missing required parameter: graph')
+                return
+
+            output_file = params.get('file', [None])[0]
+            args = [graph]
+            if output_file:
+                args.extend(['-f', output_file])
+
+            # Export graph as EDN
+            response = self._execute_logseq_command('export-edn', args)
+            self._send_json(response)
+
         else:
             self._send_error_json(f'Unknown endpoint: {path}', 404)
 
@@ -216,6 +241,21 @@ class LogseqHTTPHandler(http.server.BaseHTTPRequestHandler):
                 return
 
             response = self._execute_logseq_command('query', [graph, query])
+            self._send_json(response)
+
+        elif path == '/append':
+            text = data.get('text')
+            api_token = data.get('api_token')
+
+            if not text:
+                self._send_error_json('Missing required field: text')
+                return
+            if not api_token:
+                self._send_error_json('Missing required field: api_token (Logseq app must be running)')
+                return
+
+            # Append requires API token and running Logseq app
+            response = self._execute_logseq_command('append', [text, '-a', api_token])
             self._send_json(response)
 
         else:
